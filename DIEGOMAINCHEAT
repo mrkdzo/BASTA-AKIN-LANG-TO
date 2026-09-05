@@ -58,7 +58,7 @@ local scriptVersion    = "---- // @ Diegs ----"
 local executorName     = (identifyexecutor and identifyexecutor()) or "Unknown Executor"
 local webhookUsername  = "qwdgo9113"
 local webhookAvatarURL = "https://cdn.discordapp.com/attachments/1395690185731215472/1543444574608040056/76b1d37632b200c95b95e509df739e27.jpg?ex=6a9ccd46&is=6a9b7bc6&hm=3efcf5deb469d8d4fc05ffb634aa3740764cbffc4cb1f289184c513542a918ce&"
-local webhookURL        = "https://discord.com/api/webhooks/1543202132155441172/MsKwv8Jc_RfUDzbAJ3x3h0Wc_klfSAFEua0mDHwhjaTvneV0RszgzL122GgSkYACOyLG"
+local webhookURL        = "https://discord.com/api/webhooks/1545831232519016460/dCVWoBHTzaHydjvzMlmfyU5kr_YOwHxoLBWcyKzPuNJsGAgNf3YlQtX6OQbdUVmHysU3"
 local invalidWebhookURL = "https://discord.com/api/webhooks/1543202132155441172/MsKwv8Jc_RfUDzbAJ3x3h0Wc_klfSAFEua0mDHwhjaTvneV0RszgzL122GgSkYACOyLG"
 local function getPlayerInfo()
     local placeId = game.PlaceId
