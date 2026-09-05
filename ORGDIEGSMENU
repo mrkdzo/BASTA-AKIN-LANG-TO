@@ -26426,7 +26426,7 @@ execBtn.MouseButton1Click:Connect(function()
 		showToast("Code executed!", "$")
 	end
 end)
-local _isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local _isMobile = false -- forced desktop size
 if _isMobile then
 	local vp = workspace.CurrentCamera.ViewportSize
 	local mw = math.min(vp.X - 20, 400)
