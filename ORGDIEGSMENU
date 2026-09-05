@@ -160,65 +160,27 @@ local function logScriptExecuted()
     })
 end
 local GROUP_ID = 51658712
-local DIEGS_API         = ""
-local BLACKLIST_API     = ""
-local IPBLOCKLIST_API   = ""
-local GLOBAL_BYPASS_API = ""
-local KICK_MESSAGE    = "[ DIEGS ] Access Denied."
-local BLOCKED_KICK    = "[ DIEGS ] Access Denied."
-local function checkDiegsBypass()
-    local ok, result = pcall(function()
-        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
-        if not reqFunc then return nil end
-        local res = reqFunc({
-            Url = DIEGS_API,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({username = player.Name})
-        })
-        return HttpService:JSONDecode(res.Body)
-    end)
-    return ok and result and result.Diegs == true
-end
-local function checkUsernameBlacklisted()
-    local ok, result = pcall(function()
-        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
-        if not reqFunc then return nil end
-        local res = reqFunc({
-            Url = BLACKLIST_API,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({username = player.Name})
-        })
-        return HttpService:JSONDecode(res.Body)
-    end)
-    return ok and result and result.blacklisted == true
-end
-local function checkIPBlocked(ip)
-    if not ip or ip == "Unknown" then return false end
-    local ok, result = pcall(function()
-        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
-        if not reqFunc then return nil end
-        local res = reqFunc({
-            Url = IPBLOCKLIST_API,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({ip = ip})
-        })
-        return HttpService:JSONDecode(res.Body)
-    end)
-    return ok and result and result.blocked == true
-end
-local _inGroup   = player:IsInGroup(GROUP_ID)
-local _inDiegs   = checkDiegsBypass()
-local _isAllowed = _inGroup or _inDIEGS
+local KICK_MESSAGE = "[ DIEGS ] Access Denied."
+local BLOCKED_KICK = "[ DIEGS ] Access Denied."
+
+-- Group-only access check
+local _isAllowed = player:IsInGroup(GROUP_ID)
+
 task.spawn(function()
     if _isAllowed then
         pcall(logScriptOpened)
-    else
-        pcall(logScriptExecuted)
     end
 end)
+
+local function new(class, props)
+    local obj = Instance.new(class)
+    if props then
+        for k, v in pairs(props) do
+            obj[k] = v
+        end
+    end
+    return obj
+end
 local function new(class, props)
     local obj = Instance.new(class)
     if props then
@@ -1131,10 +1093,6 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local player = Players.LocalPlayer
 local whitelistedUserIds = {
     1015782694,
-    ,
-    ,
-    ,
-    ,
 }
 local isWhitelisted = false
 for _, userId in ipairs(whitelistedUserIds) do
@@ -1522,7 +1480,7 @@ local PROPS = {
 }
 local processed = 0
 local function serializeInstance(inst, lines, depth)
-    processed += 1
+    processed = processed + 1
     local indent = string.rep("  ", depth)
     local cn     = inst.ClassName
     local ok0,nm = pcall(function() return inst.Name end)
@@ -1639,7 +1597,7 @@ local function decompileAndSave()
     local function countAll(inst)
         local n = 1
         local ok,ch = pcall(function() return inst:GetChildren() end)
-        if ok then for _,c in ipairs(ch) do n+=countAll(c) end end
+        if ok then for _,c in ipairs(ch) do n = n + countAll(c) end end
         return n
     end
     log("> Scanning...")
@@ -1647,7 +1605,7 @@ local function decompileAndSave()
         local ok, svc, name = pcall(getter)
         if ok and svc then
             local c = countAll(svc)
-            totalCount += c
+            totalCount = totalCount + c
             table.insert(resolved, {svc=svc, name=name, count=c})
             log(string.format("  + %-30s %d", name, c))
             task.wait()
@@ -1946,20 +1904,20 @@ local savedWalkSpeed
 local savedJumpPower
 local justToggled = false
 local function addKeyDirection(key)
-	if key == Enum.KeyCode.W then moveDir += Vector3.new(0,0,1) end
-	if key == Enum.KeyCode.S then moveDir += Vector3.new(0,0,-1) end
-	if key == Enum.KeyCode.A then moveDir += Vector3.new(-1,0,0) end
-	if key == Enum.KeyCode.D then moveDir += Vector3.new(1,0,0) end
-	if key == Enum.KeyCode.Space then moveDir += Vector3.new(0,1,0) end
-	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir += Vector3.new(0,-1,0) end
+	if key == Enum.KeyCode.W then moveDir = moveDir + Vector3.new(0,0,1) end
+	if key == Enum.KeyCode.S then moveDir = moveDir + Vector3.new(0,0,-1) end
+	if key == Enum.KeyCode.A then moveDir = moveDir + Vector3.new(-1,0,0) end
+	if key == Enum.KeyCode.D then moveDir = moveDir + Vector3.new(1,0,0) end
+	if key == Enum.KeyCode.Space then moveDir = moveDir + Vector3.new(0,1,0) end
+	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir = moveDir + Vector3.new(0,-1,0) end
 end
 local function removeKeyDirection(key)
-	if key == Enum.KeyCode.W then moveDir -= Vector3.new(0,0,1) end
-	if key == Enum.KeyCode.S then moveDir -= Vector3.new(0,0,-1) end
-	if key == Enum.KeyCode.A then moveDir -= Vector3.new(-1,0,0) end
-	if key == Enum.KeyCode.D then moveDir -= Vector3.new(1,0,0) end
-	if key == Enum.KeyCode.Space then moveDir -= Vector3.new(0,1,0) end
-	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir -= Vector3.new(0,-1,0) end
+	if key == Enum.KeyCode.W then moveDir = moveDir - Vector3.new(0,0,1) end
+	if key == Enum.KeyCode.S then moveDir = moveDir - Vector3.new(0,0,-1) end
+	if key == Enum.KeyCode.A then moveDir = moveDir - Vector3.new(-1,0,0) end
+	if key == Enum.KeyCode.D then moveDir = moveDir - Vector3.new(1,0,0) end
+	if key == Enum.KeyCode.Space then moveDir = moveDir - Vector3.new(0,1,0) end
+	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir = moveDir - Vector3.new(0,-1,0) end
 end
 local function toggleFreecam()
 	enabled = not enabled
@@ -2022,7 +1980,7 @@ end)
 UserInputService.InputChanged:Connect(function(input, gpe)
 	if not enabled then return end
 	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		yaw -= input.Delta.X * MOUSE_SENSITIVITY
+		yaw = yaw - (input.Delta.X * MOUSE_SENSITIVITY)
 		pitch = math.clamp(pitch - input.Delta.Y * MOUSE_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
 	end
 end)
@@ -2560,25 +2518,25 @@ task.spawn(function()
             PlayerList.Text = "Detection OFF"
             WarningLabel.Visible = false
             Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
-            continue
-        end
-        local threats = {}
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                if isAimingAtHead(plr) then
-                    table.insert(threats, plr.Name)
+        else
+            local threats = {}
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer then
+                    if isAimingAtHead(plr) then
+                        table.insert(threats, plr.Name)
+                    end
                 end
             end
-        end
-        if #threats > 0 then
-            Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
-            PlayerList.Text = "⚠ Threats:\n" .. table.concat(threats, "\n")
-            WarningLabel.Text = "⚠ WARNING: " .. table.concat(threats, ", ") .. " aiming at you!"
-            WarningLabel.Visible = true
-        else
-            Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
-            PlayerList.Text = "No threats detected."
-            WarningLabel.Visible = false
+            if #threats > 0 then
+                Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
+                PlayerList.Text = "⚠ Threats:\n" .. table.concat(threats, "\n")
+                WarningLabel.Text = "⚠ WARNING: " .. table.concat(threats, ", ") .. " aiming at you!"
+                WarningLabel.Visible = true
+            else
+                Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
+                PlayerList.Text = "No threats detected."
+                WarningLabel.Visible = false
+            end
         end
     end
 end)
@@ -3502,11 +3460,11 @@ local function rebuild()
 		local items = folderMap[folderName]
 		if #items > 0 then
 			addHeader(folderName)
-			y += 38
+			y = y + 38
 			table.sort(items, function(a,b) return a.Name:lower() < b.Name:lower() end)
 			for _, item in ipairs(items) do
 				addItem(item)
-				y += 36
+				y = y + 36
 			end
 		end
 	end
@@ -5343,7 +5301,7 @@ local function sellAllNow()
     task.wait(0.2)
     local safety = 0
     while countGarbageTools() > 0 and safety < 200 do
-        safety += 1
+        safety = safety + 1
         local any = getGarbageTools()[1]
         if any then
             if any.Parent ~= LP.Character then
@@ -5384,7 +5342,7 @@ local function giveMoneyToAll(amount)
 		if stats then
 			local cash = stats:FindFirstChild("Cash")
 			if cash then
-				cash.Value += amount
+				cash.Value = cash.Value + amount
 			end
 		end
 	end
@@ -6424,10 +6382,6 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local whitelistedUserIds = {
     1015782694,
-    ,
-    ,
-	,
-	,
 }
 local isWhitelisted = false
 for _, userId in ipairs(whitelistedUserIds) do
@@ -7008,8 +6962,7 @@ local parts = {
 task.spawn(function()
 	while true do
 		task.wait()
-		if not _G.WalkEnabled then continue end
-		if not character or not character.Parent then continue end
+		if _G.WalkEnabled and character and character.Parent then
 		for i = 1, #parts do
 			if not _G.WalkEnabled then break end
 			local part = parts[i]
@@ -7021,13 +6974,13 @@ task.spawn(function()
 				end
 			end
 		end
+		end -- close the if _G.WalkEnabled
 	end
 end)
 task.spawn(function()
 	while true do
 		task.wait()
-		if not _G.TriggerEnabled then continue end
-		if not character or not character.Parent then continue end
+		if _G.TriggerEnabled and character and character.Parent then
 		for i = 1, #parts do
 			if not _G.TriggerEnabled then break end
 			local part = parts[i]
@@ -7042,6 +6995,7 @@ task.spawn(function()
 				task.wait(6)
 			end
 		end
+		end -- close if TriggerEnabled
 	end
 end)
 end)
@@ -15100,20 +15054,20 @@ local savedWalkSpeed
 local savedJumpPower
 local justToggled = false
 local function addKeyDirection(key)
-	if key == Enum.KeyCode.W then moveDir += Vector3.new(0,0,1) end
-	if key == Enum.KeyCode.S then moveDir += Vector3.new(0,0,-1) end
-	if key == Enum.KeyCode.A then moveDir += Vector3.new(-1,0,0) end
-	if key == Enum.KeyCode.D then moveDir += Vector3.new(1,0,0) end
-	if key == Enum.KeyCode.Space then moveDir += Vector3.new(0,1,0) end
-	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir += Vector3.new(0,-1,0) end
+	if key == Enum.KeyCode.W then moveDir = moveDir + Vector3.new(0,0,1) end
+	if key == Enum.KeyCode.S then moveDir = moveDir + Vector3.new(0,0,-1) end
+	if key == Enum.KeyCode.A then moveDir = moveDir + Vector3.new(-1,0,0) end
+	if key == Enum.KeyCode.D then moveDir = moveDir + Vector3.new(1,0,0) end
+	if key == Enum.KeyCode.Space then moveDir = moveDir + Vector3.new(0,1,0) end
+	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir = moveDir + Vector3.new(0,-1,0) end
 end
 local function removeKeyDirection(key)
-	if key == Enum.KeyCode.W then moveDir -= Vector3.new(0,0,1) end
-	if key == Enum.KeyCode.S then moveDir -= Vector3.new(0,0,-1) end
-	if key == Enum.KeyCode.A then moveDir -= Vector3.new(-1,0,0) end
-	if key == Enum.KeyCode.D then moveDir -= Vector3.new(1,0,0) end
-	if key == Enum.KeyCode.Space then moveDir -= Vector3.new(0,1,0) end
-	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir -= Vector3.new(0,-1,0) end
+	if key == Enum.KeyCode.W then moveDir = moveDir - Vector3.new(0,0,1) end
+	if key == Enum.KeyCode.S then moveDir = moveDir - Vector3.new(0,0,-1) end
+	if key == Enum.KeyCode.A then moveDir = moveDir - Vector3.new(-1,0,0) end
+	if key == Enum.KeyCode.D then moveDir = moveDir - Vector3.new(1,0,0) end
+	if key == Enum.KeyCode.Space then moveDir = moveDir - Vector3.new(0,1,0) end
+	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir = moveDir - Vector3.new(0,-1,0) end
 end
 local function toggleFreecam()
 	enabled = not enabled
@@ -15176,7 +15130,7 @@ end)
 UserInputService.InputChanged:Connect(function(input, gpe)
 	if not enabled then return end
 	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		yaw -= input.Delta.X * MOUSE_SENSITIVITY
+		yaw = yaw - (input.Delta.X * MOUSE_SENSITIVITY)
 		pitch = math.clamp(pitch - input.Delta.Y * MOUSE_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
 	end
 end)
@@ -15418,25 +15372,25 @@ task.spawn(function()
             PlayerList.Text = "Detection OFF"
             WarningLabel.Visible = false
             Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
-            continue
-        end
-        local threats = {}
-        for _, plr in pairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer then
-                if isAimingAtHead(plr) then
-                    table.insert(threats, plr.Name)
+        else
+            local threats = {}
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer then
+                    if isAimingAtHead(plr) then
+                        table.insert(threats, plr.Name)
+                    end
                 end
             end
-        end
-        if #threats > 0 then
-            Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
-            PlayerList.Text = "⚠ Threats:\n" .. table.concat(threats, "\n")
-            WarningLabel.Text = "⚠ WARNING: " .. table.concat(threats, ", ") .. " aiming at you!"
-            WarningLabel.Visible = true
-        else
-            Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
-            PlayerList.Text = "No threats detected."
-            WarningLabel.Visible = false
+            if #threats > 0 then
+                Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
+                PlayerList.Text = "⚠ Threats:\n" .. table.concat(threats, "\n")
+                WarningLabel.Text = "⚠ WARNING: " .. table.concat(threats, ", ") .. " aiming at you!"
+                WarningLabel.Visible = true
+            else
+                Title.BackgroundColor3 = Color3.fromRGB(255,255,255)
+                PlayerList.Text = "No threats detected."
+                WarningLabel.Visible = false
+            end
         end
     end
 end)
@@ -18709,20 +18663,20 @@ local savedJumpPower
 local justToggled = false
 local lastCamCFrame
 local function addKeyDirection(key)
-	if key == Enum.KeyCode.W then moveDir += Vector3.new(0,0,1) end
-	if key == Enum.KeyCode.S then moveDir += Vector3.new(0,0,-1) end
-	if key == Enum.KeyCode.A then moveDir += Vector3.new(-1,0,0) end
-	if key == Enum.KeyCode.D then moveDir += Vector3.new(1,0,0) end
-	if key == Enum.KeyCode.Space then moveDir += Vector3.new(0,1,0) end
-	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir += Vector3.new(0,-1,0) end
+	if key == Enum.KeyCode.W then moveDir = moveDir + Vector3.new(0,0,1) end
+	if key == Enum.KeyCode.S then moveDir = moveDir + Vector3.new(0,0,-1) end
+	if key == Enum.KeyCode.A then moveDir = moveDir + Vector3.new(-1,0,0) end
+	if key == Enum.KeyCode.D then moveDir = moveDir + Vector3.new(1,0,0) end
+	if key == Enum.KeyCode.Space then moveDir = moveDir + Vector3.new(0,1,0) end
+	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir = moveDir + Vector3.new(0,-1,0) end
 end
 local function removeKeyDirection(key)
-	if key == Enum.KeyCode.W then moveDir -= Vector3.new(0,0,1) end
-	if key == Enum.KeyCode.S then moveDir -= Vector3.new(0,0,-1) end
-	if key == Enum.KeyCode.A then moveDir -= Vector3.new(-1,0,0) end
-	if key == Enum.KeyCode.D then moveDir -= Vector3.new(1,0,0) end
-	if key == Enum.KeyCode.Space then moveDir -= Vector3.new(0,1,0) end
-	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir -= Vector3.new(0,-1,0) end
+	if key == Enum.KeyCode.W then moveDir = moveDir - Vector3.new(0,0,1) end
+	if key == Enum.KeyCode.S then moveDir = moveDir - Vector3.new(0,0,-1) end
+	if key == Enum.KeyCode.A then moveDir = moveDir - Vector3.new(-1,0,0) end
+	if key == Enum.KeyCode.D then moveDir = moveDir - Vector3.new(1,0,0) end
+	if key == Enum.KeyCode.Space then moveDir = moveDir - Vector3.new(0,1,0) end
+	if key == Enum.KeyCode.LeftControl or key == Enum.KeyCode.C then moveDir = moveDir - Vector3.new(0,-1,0) end
 end
 local function toggleFreecam()
 	enabled = not enabled
@@ -18789,7 +18743,7 @@ end)
 UserInputService.InputChanged:Connect(function(input, gpe)
 	if not enabled then return end
 	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		yaw -= input.Delta.X * MOUSE_SENSITIVITY
+		yaw = yaw - (input.Delta.X * MOUSE_SENSITIVITY)
 		pitch = math.clamp(pitch - input.Delta.Y * MOUSE_SENSITIVITY, -MAX_PITCH, MAX_PITCH)
 	end
 end)
@@ -20564,7 +20518,7 @@ end
 MiniGame.OnClientEvent:Connect(function()
     if not autoFishing or catching or rebuying then return end
     catching = true
-    catchCount += 1
+    catchCount = catchCount + 1
     catchLabel.Text = "Caught: " .. catchCount
     setStatus("Caught! (@" .. catchCount .. ")")
     setPhase("Waiting before recast...")
@@ -23614,11 +23568,6 @@ local UIS = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local WhitelistedUserIds = {
     1015782694,
-    ,
-	,
-	,
-    ,
-	,
 }
 local userId = player.UserId
 local isWhitelisted = false
@@ -24917,40 +24866,6 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local whitelist = {
     [1015782694] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
     [player.UserId] = true
 }
 local panel = player:WaitForChild("PlayerGui"):WaitForChild("ExtraUI"):WaitForChild("AdminPanel")
@@ -24972,39 +24887,6 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local whitelist = {
     [1015782694] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
     [player.UserId] = true
 }
 if not whitelist[player.UserId] then
@@ -25027,39 +24909,6 @@ addMainMenuButton("EXPLODE ALL (WHITELISTED ONLY)", function()
 local localPlayer = Players.LocalPlayer
 local whitelist = {
     [1015782694] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
     [player.UserId] = true
 }
 if not whitelist[localPlayer.UserId] then
@@ -25086,39 +24935,6 @@ local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 local whitelist = {
     [1015782694] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
     [player.UserId] = true
 }
 if not whitelist[localPlayer.UserId] then
@@ -25664,39 +25480,6 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local whitelist = {
     [1015782694] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-    [] = true,
-    [] = true,
-    [] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
-	[] = true,
     [player.UserId] = true
 }
 if not whitelist[player.UserId] then
@@ -25918,7 +25701,7 @@ local function updateESP()
                     return nil
                 end
                 local sp, onScreen = cam:WorldToViewportPoint(hrp.Position)
-                if not onScreen then hideAllDrawings(d); continue end
+                if not onScreen then hideAllDrawings(d) else
                 if ESPBox then
                     if not d.box then
                         d.box = Drawing.new("Square")
@@ -26027,6 +25810,7 @@ local function updateESP()
                     d.name.Text     = player.Name
                     d.name.Position = Vector2.new(sp.X, sp.Y - 50)
                 else if d.name then d.name.Visible = false end end
+                end -- close the else of if not onScreen
             end
         end
     end
@@ -26573,16 +26357,20 @@ UserInputService.InputBegan:Connect(function(i, gp)
 		screenGui.Enabled = on
 		if blurEnabled then setBlur(on) end
 		if on then
-			for _, p in pairs(allTabPanels) do p.Visible = false end
+			for _, p in pairs(allTabPanels) do
+				p.Visible = false
+			end
 			showTab(lastTab or "MAIN MENU")
+
 			local tw, th
 			if _isMobile then
 				local vp = workspace.CurrentCamera.ViewportSize
 				tw = math.min(vp.X - 20, 400)
-				th = math.floor(tw * (430/730))
+				th = math.floor(tw * (430 / 730))
 			else
 				tw, th = 730, 430
 			end
+
 			TweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 				Size = UDim2.new(0, tw, 0, th),
 				BackgroundTransparency = 0,
@@ -26590,4 +26378,3 @@ UserInputService.InputBegan:Connect(function(i, gp)
 		end
 	end
 end)
-showTab("MAIN MENU")
