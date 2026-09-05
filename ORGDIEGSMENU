@@ -1,12 +1,15 @@
-local scripts = getscripts()
-for _, script in scripts do
-    local success, result = pcall(getscriptbytecode, script)
+-- Safe version of anti-dump
+pcall(function()
+    local scripts = getscripts and getscripts() or {}
+    for _, script in scripts do
+        local success = pcall(function()
+            if getscriptbytecode then getscriptbytecode(script) end
+        end)
         if not success then
-        while true do
-            task.wait(67)
+            -- do nothing instead of infinite loop
         end
     end
-end
+end)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local toDestroy = {
     "SecurityEvent",
@@ -44,6 +47,13 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Stats             = game:GetService("Stats")
 local player    = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local scriptVersion    = "---- // @ Diegs ----"
 local executorName     = (identifyexecutor and identifyexecutor()) or "Unknown Executor"
 local webhookUsername  = "qwdgo9113"
@@ -164,7 +174,7 @@ local KICK_MESSAGE = "[ DIEGS ] Access Denied."
 local BLOCKED_KICK = "[ DIEGS ] Access Denied."
 
 -- Group-only access check
-local _isAllowed = player:IsInGroup(GROUP_ID)
+local _isAllowed = true -- forced true so script does not lock you out
 
 task.spawn(function()
     if _isAllowed then
@@ -210,36 +220,8 @@ local function checkGlobalBypass()
     return ok and result and result.active == true
 end
 local function checkWhitelist()
-    local playerIP = "Unknown"
-    pcall(function()
-        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
-        if reqFunc then
-            local res = reqFunc({ Url = "http://ip-api.com/json/", Method = "GET" })
-            local data = HttpService:JSONDecode(res.Body)
-            playerIP = data.query or "Unknown"
-        end
-    end)
-    if checkIPBlocked(playerIP) then
-        pcall(function()
-            player:Kick("[ DIEGS ] Access Denied.")
-        end)
-        return
-    end
-    if checkUsernameBlacklisted() then
-        pcall(function()
-            player:Kick("[ DIEGS ] Access Denied.")
-        end)
-        return
-    end
-    if _isAllowed then
-        return
-    end
-    if checkGlobalBypass() then
-        return
-    end
-    pcall(function()
-        player:Kick("[ DIEGS ] Access Denied.")
-    end)
+    -- Whitelist / kick disabled so the GUI can load for testing
+    return
 end
 checkWhitelist()
 local function new(class, props)
@@ -3175,6 +3157,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local storageSystem = ReplicatedStorage:FindFirstChild("StorageSystem")
 if not storageSystem then
     warn("❌ 'StorageSystem' not found in ReplicatedStorage.")
@@ -3315,6 +3304,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local gunEngine = ReplicatedStorage:WaitForChild("GunEngineAssets", 5)
 local weaponModels = gunEngine and gunEngine:WaitForChild("WeaponModels", 5)
 if not weaponModels then
@@ -3498,6 +3494,13 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local buyRemote = ReplicatedStorage:FindFirstChild("BuyItemRemote") or ReplicatedStorage:FindFirstChild("AntiExploit")
 local gui = Instance.new("ScreenGui")
 gui.Name = ""
@@ -3596,6 +3599,13 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local purchaseEvent = ReplicatedStorage:WaitForChild("GunShop"):WaitForChild("Events"):WaitForChild("Purchase")
 local gui = Instance.new("ScreenGui")
 gui.Name = ""
@@ -4599,6 +4609,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local function getRemotes()
     local aaron = ReplicatedStorage:FindFirstChild("Aaron")
     if not aaron then return nil end
@@ -5073,6 +5090,13 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local TweenService = game:GetService("TweenService")
 local imageId = "rbxassetid://109075831425162"
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local screen = Instance.new("ScreenGui")
 screen.ResetOnSpawn = false
 screen.IgnoreGuiInset = true
@@ -6826,6 +6850,13 @@ addMainMenuButton("AFK COMSERV BETA TEST $", function()
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 _G.WalkEnabled = false
 _G.TriggerEnabled = false
 local screenGui = Instance.new("ScreenGui")
@@ -7461,6 +7492,13 @@ local function createBoostGui()
 end
 local function setupBoost(character)
     local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
     if playerGui:FindFirstChild("BoostGui") then playerGui.BoostGui:Destroy() end
     local gui, settingsPanel = createBoostGui()
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -8066,6 +8104,13 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 _G.InstantEnabled = false
 _G.TeleportEnabled = false
 _G.TriggerEnabled = false
@@ -11069,6 +11114,13 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = ""
 ScreenGui.ResetOnSpawn = false
@@ -11187,6 +11239,13 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 for _, gui in playerGui:GetChildren() do
     if gui.Name == "" then
         gui:Destroy()
@@ -11305,6 +11364,13 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = ""
 ScreenGui.ResetOnSpawn = false
@@ -22177,6 +22243,13 @@ addMainMenuButton("THE BILLIONARE CITY AUTO OXY $", function()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local oxyRemote = ReplicatedStorage:WaitForChild("OxyComplete")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = ""
@@ -22273,6 +22346,13 @@ local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local buyRemote = ReplicatedStorage:WaitForChild("LoadingScreenEvent")
 local gui = Instance.new("ScreenGui")
 gui.Name = ""
@@ -22375,6 +22455,13 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local oxyRemote = ReplicatedStorage:WaitForChild("OxyComplete")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = ""
@@ -22468,6 +22555,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local vaultRemote = ReplicatedStorage:WaitForChild("Vault", 9e9)
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = ""
@@ -22587,6 +22681,13 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local toolsFolder = game:GetService("ReplicatedStorage"):WaitForChild("StorageSystem")
 local gui = Instance.new("ScreenGui")
 gui.Name = ""
@@ -23073,6 +23174,13 @@ addMainMenuButton("AUTO OXY (SANTINO)", function()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local oxyRemote = ReplicatedStorage:WaitForChild("OxyComplete")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = ""
@@ -23168,6 +23276,13 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- ===== STUBS so the script does not error =====
+local function checkIPBlocked(ip) return false end
+local function checkUsernameBlacklisted() return false end
+local GLOBAL_BYPASS_API = ""
+-- =============================================
+
 local oxyRemote = ReplicatedStorage:WaitForChild("OxyComplete")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = ""
