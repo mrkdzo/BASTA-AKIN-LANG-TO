@@ -1,3 +1,42 @@
+-- MNX GUI standalone initialization patch
+-- Added because the supplied file is a GUI extract and was missing its dependency setup.
+
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+if not LP then return end
+
+local RS = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local TS = game:GetService("TweenService")
+local CAM = workspace.CurrentCamera
+
+local BLACK = Color3.fromRGB(8, 8, 8)
+local WHITE = Color3.fromRGB(255, 255, 255)
+local RED   = Color3.fromRGB(255, 45, 45)
+local LINE  = Color3.fromRGB(35, 35, 35)
+
+-- Preserve an existing settings table when the full script supplied one.
+S = S or {}
+local defaults = {
+    AimbotSpeed = 5, AimDistance = 500, AimPart = "Head", AimbotKeyName = "MB1",
+    AimPredAmt = 50, FOVRadius = 80, SmoothFactor = 5,
+    HitboxSize = 20, HitboxTransparency = 0.8,
+    FloatHeight = 5, FlySpeed = 50, JumpPower = 50, SpeedValue = 16,
+    TimerMultiply = 1, FreecamSpeed = 50, TargetHoverRadius = 25,
+    RadarDistance = 250, RadarRange = 250, RadarSize = 160,
+    ESPRenderDist = 1000, SAMaxDist = 1000, TBHitboxMul = 1, TriggerDelay = 0.1,
+    MenuKey = Enum.KeyCode.RightShift, FlyKey = Enum.KeyCode.F,
+    FreecamKey = Enum.KeyCode.C, TrackAllKey = Enum.KeyCode.X,
+}
+for k, v in pairs(defaults) do
+    if S[k] == nil then S[k] = v end
+end
+
+-- Extracted/deobfuscated GUI section from the supplied script.
+-- Source range: decoded lines 365-4669.
+-- Note: this is the GUI layer plus its UI callbacks/helpers; it may still depend
+-- on non-GUI functions/variables defined earlier in the original script.
+
 local menuKeyCapturing = false
 local espObjects       = {}
 local function tw(o, p, t)
@@ -384,7 +423,7 @@ local function makeIcon(parent, tabKey, color, size)
     return container
 end
 local GUI = Instance.new("ScreenGui")
-GUI.Name = "DIEGS MENU"; GUI.ResetOnSpawn = false
+GUI.Name = "MNX MENU"; GUI.ResetOnSpawn = false
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 GUI.IgnoreGuiInset = true
 pcall(function() GUI.Parent = game:GetService("CoreGui") end)
@@ -478,7 +517,7 @@ UIS.InputChanged:Connect(function(i)
                                   _dp.Y.Scale, _dp.Y.Offset + dv.Y)
     end
 end)
-local brandName = lbl(topBar, "DIEGS MENU", 14, WHITE, true)
+local brandName = lbl(topBar, "MNX MENU", 14, WHITE, true)
 brandName.Size     = UDim2.fromOffset(130, TOPBAR_H)
 brandName.Position = UDim2.fromOffset(12, 0)
 brandName.Font     = Enum.Font.GothamBold
@@ -769,7 +808,7 @@ discordL.Size            = UDim2.fromOffset(200, FOOTER_H)
 discordL.Position        = UDim2.new(0.5, -100, 0, 0)
 discordL.TextXAlignment  = Enum.TextXAlignment.Center
 discordL.ZIndex          = 10
-local buildL = lbl(footerBar, "@ qwdgo", 8, Color3.fromRGB(255, 255, 255), false)
+local buildL = lbl(footerBar, "@ dfwyzi", 8, Color3.fromRGB(255, 255, 255), false)
 buildL.Size           = UDim2.fromOffset(160, FOOTER_H)
 buildL.Position       = UDim2.new(1, -164, 0, 0)
 buildL.TextXAlignment = Enum.TextXAlignment.Right
@@ -3990,7 +4029,7 @@ do
         end)
     end); yR = yR + 31
     secLabel(R, yR, colW, "ABOUT"); yR = yR + 26
-    local ab=lbl(R,"DIEGS MENU | coded by @ qwdgo",10,DIM,false)
+    local ab=lbl(R,"MNX MENU | coded by @ dfwyzi",10,DIM,false)
     ab.Size=UDim2.fromOffset(colW,18); ab.Position=UDim2.fromOffset(0,yR)
 end
 do
