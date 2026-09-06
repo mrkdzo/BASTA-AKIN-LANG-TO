@@ -4326,12 +4326,35 @@ local function closeMenu()
     }):Play()
     task.delay(0.22, function() Win.Visible=false; Win.Size=UDim2.fromOffset(WIN_W,WIN_H); Win.BackgroundTransparency=0; Win.Position=UDim2.new(0.5,-WIN_W/2,0.5,-WIN_H/2) end)
 end
+-- Mobile-friendly menu toggle: no keyboard/right-shift required.
+local MobileToggle = Instance.new("TextButton")
+MobileToggle.Name = "MobileToggle"
+MobileToggle.Size = UDim2.fromOffset(54, 54)
+MobileToggle.Position = UDim2.new(1, -70, 1, -85)
+MobileToggle.AnchorPoint = Vector2.new(0, 0)
+MobileToggle.BackgroundColor3 = RED
+MobileToggle.BackgroundTransparency = 0.08
+MobileToggle.Text = "MNX"
+MobileToggle.TextColor3 = WHITE
+MobileToggle.TextSize = 14
+MobileToggle.Font = Enum.Font.GothamBold
+MobileToggle.AutoButtonColor = true
+MobileToggle.ZIndex = 1000
+MobileToggle.Parent = GUI
+local mtCorner = Instance.new("UICorner", MobileToggle)
+mtCorner.CornerRadius = UDim.new(1, 0)
+local mtStroke = Instance.new("UIStroke", MobileToggle)
+mtStroke.Color = Color3.fromRGB(40,40,40)
+mtStroke.Thickness = 1
+MobileToggle.Activated:Connect(function()
+    if Win.Visible then closeMenu() else openMenu() end
+end)
+
+-- Keep keyboard support if a keyboard is attached, but it is no longer required.
 UIS.InputBegan:Connect(function(inp, gp)
     if gp or menuKeyCapturing then return end
-    if inp.UserInputType == Enum.UserInputType.Keyboard then
-        if inp.KeyCode == S.MenuKey then
-            if Win.Visible then closeMenu() else openMenu() end
-        end
+    if inp.UserInputType == Enum.UserInputType.Keyboard and inp.KeyCode == S.MenuKey then
+        if Win.Visible then closeMenu() else openMenu() end
     end
 end)
 task.spawn(function()
@@ -4342,3 +4365,6 @@ task.spawn(function()
     TS:Create(Win,TweenInfo.new(0.32,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{
         Size=UDim2.fromOffset(WIN_W,WIN_H),
         Position=UDim2.new(0.5,-WIN_W/2,0.5,-WIN_H/2),
+        BackgroundTransparency=0,
+    }):Play()
+end)
